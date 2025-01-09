@@ -1,10 +1,10 @@
 - name: Home
   link: /
 - name: Overview
-  link: pages/overview.html
+  link: overview.html
 - name: Setup
-  link: pages/setup.html
+  link: setup.html
 - name: Architecture
-  link: pages/architecture.html
+  link: architecture.html
 - name: Reproduction
-  link: pages/reproduction.html
+  link: reproduction.html
