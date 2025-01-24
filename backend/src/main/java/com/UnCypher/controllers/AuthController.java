@@ -1,4 +1,4 @@
-package com.DrawGPT.controllers;
+package com.UnCypher.controllers;
 
 import com.DrawGPT.services.AuthService;
 import com.DrawGPT.models.AuthCred;

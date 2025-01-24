@@ -1,4 +1,4 @@
-package com.DrawGPT.repo;
+package com.UnCypher.repo;
 
 import com.DrawGPT.models.AuthCred;
 import org.springframework.stereotype.Repository;

@@ -1,4 +1,4 @@
-package com.DrawGPT.config;
+package com.UnCypher.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

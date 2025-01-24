@@ -9,7 +9,7 @@
     <relativePath/>
   </parent>
 
-  <groupId>com.decymath</groupId>
+  <groupId>com.UnCypher</groupId>
   <artifactId>backend</artifactId>
   <version>1.0.0</version>
   <name>backend Spring Boot Application</name>
