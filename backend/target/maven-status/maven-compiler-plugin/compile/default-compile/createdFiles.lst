@@ -1,8 +1,8 @@
-com/DrawGPT/controllers/AuthController.class
-com/DrawGPT/services/AuthService.class
-com/DrawGPT/repo/AuthRepo.class
-com/DrawGPT/config/DynamoDbConfig.class
-com/DrawGPT/models/User.class
-com/DrawGPT/BackendApplication.class
-com/DrawGPT/models/AuthCred.class
-com/DrawGPT/config/SecurityConfig.class
+com/UnCypher/repo/AuthRepo.class
+com/UnCypher/BackendApplication.class
+com/UnCypher/config/DynamoDbConfig.class
+com/UnCypher/controllers/AuthController.class
+com/UnCypher/config/SecurityConfig.class
+com/UnCypher/models/AuthCred.class
+com/UnCypher/models/User.class
+com/UnCypher/services/AuthService.class
