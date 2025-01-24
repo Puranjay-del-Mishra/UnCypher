@@ -1,1 +1,8 @@
-com/DrawGPT/controllers/testController.class
+com/DrawGPT/controllers/AuthController.class
+com/DrawGPT/services/AuthService.class
+com/DrawGPT/repo/AuthRepo.class
+com/DrawGPT/config/DynamoDbConfig.class
+com/DrawGPT/models/User.class
+com/DrawGPT/BackendApplication.class
+com/DrawGPT/models/AuthCred.class
+com/DrawGPT/config/SecurityConfig.class

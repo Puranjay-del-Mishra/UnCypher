@@ -1,1 +1,10 @@
-/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/controllers/testController.java
+/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/controllers/AuthController.java
+/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/BackendApplication.java
+/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/config/DynamoDbConfig.java
+/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/models/User.java
+/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/config/SecurityConfig.java
+/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/models/AuthCred.java
+/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/repo/AuthRepo.java
+/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/services/UserService.java
+/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/repo/userRepo.java
+/mnt/c/Users/Acer/IdeaProjects/DrawGPT/backend/src/main/java/com/DrawGPT/services/AuthService.java
