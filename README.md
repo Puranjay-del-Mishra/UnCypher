@@ -1,5 +1,5 @@
-# DrawGPT
-Text to image converter that produces beautiful illustrations using a description. 
+# UnCypher
+Coming soon!
 
 https://puranjay-del-mishra.github.io/DrawGPT/
 
