@@ -3,6 +3,9 @@ com/UnCypher/BackendApplication.class
 com/UnCypher/config/DynamoDbConfig.class
 com/UnCypher/controllers/AuthController.class
 com/UnCypher/config/SecurityConfig.class
+com/UnCypher/services/UserService.class
+com/UnCypher/repo/UserRepo.class
 com/UnCypher/models/AuthCred.class
+com/UnCypher/controllers/CsrfController.class
 com/UnCypher/models/User.class
 com/UnCypher/services/AuthService.class
