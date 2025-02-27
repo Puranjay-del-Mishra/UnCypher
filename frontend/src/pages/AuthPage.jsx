@@ -7,7 +7,7 @@ import '../styles/AuthPage.css';
 import logo from '../assets/uncypher_logo.png'; // ✅ Ensure logo exists
 
 const AuthPage = () => {
-  const { login } = useContext(AuthContext); // ✅ Remove isAuthenticated (not needed)
+  const { login, csrfToken} = useContext(AuthContext); // ✅ Remove isAuthenticated (not needed)
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,13 +20,16 @@ const AuthPage = () => {
     const endpoint = isLogin ? '/auth/login' : '/auth/signup';
 
     try {
-      const response = await axios.post(`${config.API_BASE_URL}${endpoint}`, { email, password }, { withCredentials: true });
-
-      console.log(`${isLogin ? 'Login' : 'Signup'} successful:`, response.data);
-      login(response.data.user); // ✅ Pass only the `user` object
+      console.log('Login event happened, csrf token for the same is - ', csrfToken);
+      const response = await axios.post(`${config.API_BASE_URL}${endpoint}`, { email, password },
+          { withCredentials: true,
+          headers: {'X-XSRF-TOKEN': csrfToken, // ✅ explicitly include CSRF token header
+      }});
+      console.log('The user data is - ', response.config.data);
+      await login(response.config.data); // ✅ Pass only the `user` object
       navigate('/dashboard');
-
     } catch (error) {
+      console.error('❌ Axios error:', error);
       setErrorMessage(
         error.response?.status === 409 ? 'Invalid username or password!' :
         error.response?.status === 400 ? 'Bad request. Please check your inputs.' :

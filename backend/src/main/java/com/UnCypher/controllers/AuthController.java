@@ -5,6 +5,8 @@ import com.UnCypher.models.AuthCred;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("/auth")
@@ -29,6 +31,10 @@ public class AuthController {
             //invalid
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Invalid user name or password!");
         }
+    }
+    @PostMapping("/logout")
+    public ResponseEntity<String> logoutUser(HttpServletRequest request, HttpServletResponse response){
+        return service.logoutUser(request, response);
     }
 }
 

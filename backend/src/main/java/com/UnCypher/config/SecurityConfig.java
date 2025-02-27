@@ -14,6 +14,9 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.web.filter.CommonsRequestLoggingFilter;
+
 
 import java.util.List;
 
@@ -36,9 +39,9 @@ public class SecurityConfig {
         http
                 // ✅ 1️⃣ Ensure OPTIONS Preflight Requests Are Fully Allowed
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()  // ✅ Allow OPTIONS preflight requests
-                        .requestMatchers("/csrf-token").permitAll()  // ✅ Allow CSRF token requests
-                        .requestMatchers("/auth/login", "/auth/register").permitAll() // ✅ Other public endpoints
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()  //Allow OPTIONS preflight requests
+                        .requestMatchers("/csrf-token").permitAll()  // Allow CSRF token requests
+                        .requestMatchers("/auth/login", "/auth/logout", "/auth/signup").permitAll() // Other public endpoints
                         .anyRequest().authenticated() // ✅ Protect all other endpoints
                 )
 
@@ -49,6 +52,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) // ✅ CSRF Token in Cookie
                         .ignoringRequestMatchers("/csrf-token") // ✅ Ignore CSRF for CSRF token retrieval
+                        .ignoringRequestMatchers("/auth/logout", "/auth/signup")
                         .ignoringRequestMatchers(new AntPathRequestMatcher("/**", "OPTIONS")) // ✅ Ignore CSRF for OPTIONS preflight requests
                 )
 
@@ -62,7 +66,17 @@ public class SecurityConfig {
 
         return http.build();
     }
-
+    @Bean
+    public FilterRegistrationBean<CommonsRequestLoggingFilter> logFilter() {
+        FilterRegistrationBean<CommonsRequestLoggingFilter> registrationBean = new FilterRegistrationBean<>();
+        CommonsRequestLoggingFilter filter = new CommonsRequestLoggingFilter();
+        filter.setIncludeHeaders(true);
+        filter.setIncludeQueryString(true);
+        filter.setIncludePayload(true);
+        filter.setIncludeClientInfo(true);
+        registrationBean.setFilter(filter);
+        return registrationBean;
+    }
     // ✅ 5️⃣ Global CORS Configuration to Allow Frontend Access
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

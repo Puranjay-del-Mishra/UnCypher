@@ -3,8 +3,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
-    const {isAuthenticated, user, logout} = useContext(AuthContext);
-
+    const { isAuthenticated, user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
 
     const handleLogout = () => {
@@ -12,14 +11,18 @@ const Dashboard = () => {
         navigate('/');
     };
 
-    if(!isAuthenticated){
+    if (!isAuthenticated) {
         return <p>You are not logged in</p>;
     }
 
     return (
-        <div>
-        <h2>Welcome, {user?.email}!</h2>
-        <button onClick={handleLogout}>Logout</button>
+        <div className="dashboard-container">
+            <h2>Welcome to UnCypher</h2>
+
+            {/* ✅ Display username above the logout button */}
+            {user?.email && <p className="username">Logged in as: {user.email}</p>}
+
+            <button className="logout-button" onClick={handleLogout}>Logout</button>
         </div>
     );
 };
