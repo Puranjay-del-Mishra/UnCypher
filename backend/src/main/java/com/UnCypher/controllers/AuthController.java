@@ -7,12 +7,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
     private final AuthService service;
 
+    @Autowired
     public AuthController(AuthService service){
         this.service = service;
     }
@@ -23,8 +25,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestBody AuthCred cred){
-        if(service.loginUser(cred.getEmail(), cred.getPassword())){
+    public ResponseEntity<String> loginUser(@RequestBody AuthCred cred, HttpServletRequest request){
+        if(service.loginUser(cred.getEmail(), cred.getPassword(), request)){
             return ResponseEntity.ok("Login successful!");
         }
         else{

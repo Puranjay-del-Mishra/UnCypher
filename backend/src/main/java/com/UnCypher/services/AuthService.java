@@ -1,5 +1,10 @@
 package com.UnCypher.services;
 
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import java.util.Collections;
 import com.UnCypher.models.AuthCred;
 import com.UnCypher.repo.AuthRepo;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -31,12 +36,27 @@ public class AuthService {
         return ResponseEntity.ok("User registered successfully!");
     }
 
-    public boolean loginUser(String email, String password) {
+    public boolean loginUser(String email, String password, HttpServletRequest request) {
         AuthCred cred = repo.findByEmail(email);
-        if (cred == null) {
+        if (cred == null || !passwordEncoder.matches(password, cred.getPassword())) {
             return false;
         }
-        return passwordEncoder.matches(password, cred.getPassword());
+
+        // Create Authentication object
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                email, null, Collections.emptyList()
+        );
+
+        // Set in SecurityContextHolder (current thread)
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        // ✅ Store it in session so it persists across requests
+        request.getSession(true).setAttribute(
+                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+                SecurityContextHolder.getContext()
+        );
+
+        return true;
     }
 
     public ResponseEntity<String> logoutUser(HttpServletRequest request, HttpServletResponse response) {
