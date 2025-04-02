@@ -15,6 +15,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Cookie;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.context.SecurityContext;
+
 
 @Service
 public class AuthService {
@@ -42,18 +46,20 @@ public class AuthService {
             return false;
         }
 
-        // Create Authentication object
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                email, null, Collections.emptyList()
-        );
+        // ✅ Create Authentication object using Spring Security's UserDetails
+        User userDetails = new User(email, "", Collections.emptyList());
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-        // Set in SecurityContextHolder (current thread)
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        // ✅ Create and set SecurityContext
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
 
-        // ✅ Store it in session so it persists across requests
+        // ✅ Store context in session
         request.getSession(true).setAttribute(
                 HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-                SecurityContextHolder.getContext()
+                context
         );
 
         return true;

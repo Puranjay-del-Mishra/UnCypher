@@ -25,6 +25,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 import java.util.List;
@@ -43,37 +46,28 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         logger.info("✅ Configuring SecurityFilterChain...");
-
+        CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
+        // Using the class name as attribute name so Spring Security can find it
+        requestHandler.setCsrfRequestAttributeName(CsrfToken.class.getName());
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Preflight CORS
-                        .requestMatchers("/csrf-token").permitAll()             // Allow CSRF token fetch
-                        .requestMatchers("/auth/**").permitAll()                // Auth endpoints
-                        .requestMatchers("/insights/**").authenticated()    // Insecure insight endpoints, fix soon
-                        .anyRequest().authenticated()                           // Secure all else
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Preflight
+                        .requestMatchers("/csrf-token").permitAll()             // Allow token fetch
+                        .requestMatchers("/auth/**").authenticated()                // Allow auth
+                        .requestMatchers("/insights/**").authenticated()        // Require auth
+                        .anyRequest().authenticated()
                 )
-
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers(
-                                new AntPathRequestMatcher("/auth/login"),
-                                new AntPathRequestMatcher("/auth/signup"),
-                                new AntPathRequestMatcher("/csrf-token"),
-                                new AntPathRequestMatcher("/insights/test_ping", "POST")
-                        )
-                        .csrfTokenRepository(csrfTokenRepository()) // auto sets the cookie
+                        .csrfTokenRepository(csrfTokenRepository())
+                        .csrfTokenRequestHandler(requestHandler)
                 )
-//                                new AntPathRequestMatcher("/insights/test_ping", "POST")
-//                .csrf(csrf -> csrf.disable())
-
-                .addFilterBefore(new CsrfDebugFilter(), CsrfFilter.class) // 🐞 Add CSRF Debug Logger
-
+                .addFilterBefore(new CsrfDebugFilter(), CsrfFilter.class)                   // debug CSRF
+                .addFilterAfter(authDebugLogger(), UsernamePasswordAuthenticationFilter.class) // debug auth
                 .sessionManagement(session -> session
                         .sessionFixation().none()
                         .sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
                 )
-
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(formLogin -> formLogin.disable())
                 .anonymous(anonymous -> anonymous.disable());
@@ -81,11 +75,47 @@ public class SecurityConfig {
         return http.build();
     }
 
+
     @Bean
     public CsrfTokenRepository csrfTokenRepository() {
         CookieCsrfTokenRepository repo = CookieCsrfTokenRepository.withHttpOnlyFalse();
-        repo.setHeaderName("X-XSRF-TOKEN"); // 🔥 Important!
+        repo.setHeaderName("X-XSRF-TOKEN");            // Header your frontend sends
+        repo.setCookieName("XSRF-TOKEN");              // Cookie your browser stores
+        repo.setCookiePath("/");                       // ✅ Makes cookie available to all routes
         return repo;
+    }
+
+    @Bean
+    public OncePerRequestFilter csrfTokenBindingFilter() {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                    throws ServletException, IOException {
+                CsrfToken token = (CsrfToken) request.getAttribute("_csrf");
+                if (token != null) {
+                    request.setAttribute(CsrfToken.class.getName(), token); // 💥 this is the magic
+                }
+                filterChain.doFilter(request, response);
+            }
+        };
+    }
+
+    @Bean
+    public OncePerRequestFilter authDebugLogger() {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request,
+                                            HttpServletResponse response,
+                                            FilterChain filterChain)
+                    throws ServletException, IOException {
+                var auth = SecurityContextHolder.getContext().getAuthentication();
+                System.out.println("=== 🔐 AUTH DEBUG ===");
+                System.out.println("🔑 Principal: " + (auth != null ? auth.getPrincipal() : "null"));
+                System.out.println("✅ Authenticated: " + (auth != null && auth.isAuthenticated()));
+                System.out.println("======================");
+                filterChain.doFilter(request, response);
+            }
+        };
     }
 
     @Bean

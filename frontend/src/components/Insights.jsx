@@ -1,22 +1,32 @@
 import React, {useEffect, useContext} from 'react';
 import axios from 'axios';
 import config from '../config';
-import api from '../utils/api.js'
 import getCookie from '../utils/cookie.js'
 import apiBare from '../utils/apiBare'
+import api, { getCsrfToken, resetCsrf } from "../utils/api";
 
 const Insights = ({ data, allowInsight }) => {
 
+  const Insights = []
   useEffect(() => {
     if (allowInsight && data) {
       const sendInsightRequest = async () => {
 
         try {
+          resetCsrf();              // Clear stale token
+          const token = await getCsrfToken();
           const response = await api.post(
-            `/insights/test_ping`,
+            `/insights/basic_insights`,
             data,
+            {
+              headers: {
+                "X-XSRF-TOKEN": token, // 👈 manually set token explicitly
+              },
+              withCredentials: true,   // 👈 ensure cookies (JSESSIONID + XSRF-TOKEN) are sent
+            }
           );
           console.log('Insights response:', response.data);
+//           add Insights logging details
         } catch (error) {
           console.error('Error fetching insights:', error);
         }

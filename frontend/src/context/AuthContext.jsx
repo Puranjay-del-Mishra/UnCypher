@@ -15,12 +15,17 @@ const AuthProvider = ({ children }) => {
     try {
 //       console.log("Login called with user data:", userData);
 //       console.log("Current CSRF Token:", csrfToken);
-
-      const response = await apiBare.post(
+      resetCsrf();              // Clear stale token
+      await getCsrfToken();
+      const response = await api.post(
         `${config.API_BASE_URL}/auth/login`,
         userData,
+        {
+            withCredentials: true
+        }
       );
-
+      resetCsrf();              // Clear stale token
+      await getCsrfToken();
       console.log("✅ Login successful:");
       setIsAuthenticated(true);
       setUser(response.data.user);
