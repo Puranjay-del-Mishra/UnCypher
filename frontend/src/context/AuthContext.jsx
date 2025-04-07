@@ -1,64 +1,82 @@
 import { createContext, useState, useEffect } from "react";
 import axios from "axios";
 import config from "../config";
-import api, {resetCsrf, getCsrfToken} from "../utils/api.js"
+import api from "../utils/api";         // Your Axios instance (can still use it)
+
 const AuthContext = createContext(null);
-import getCookie from '../utils/cookie'; // Assumes you already have this
-import apiBare from '../utils/apiBare'
 
 const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-
-  // ✅ Login function
-  const login = async (userData) => {
+  const [accessToken, setAccessToken] = useState(() => localStorage.getItem("accessToken"));
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  // ✅ Decode JWT to extract user info (optional, based on your backend payload)
+  const decodeJWT = (token) => {
     try {
-//       console.log("Login called with user data:", userData);
-//       console.log("Current CSRF Token:", csrfToken);
-      resetCsrf();              // Clear stale token
-      await getCsrfToken();
-      const response = await api.post(
-        `${config.API_BASE_URL}/auth/login`,
-        userData,
-        {
-            withCredentials: true
-        }
-      );
-      resetCsrf();              // Clear stale token
-      await getCsrfToken();
-      console.log("✅ Login successful:");
-      setIsAuthenticated(true);
-      setUser(response.data.user);
-    } catch (err) {
-      console.error("❌ Login Failed!", err);
-      console.error("🔍 Full Axios Error:", err.toJSON ? err.toJSON() : err);
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload;
+    } catch (e) {
+      return null;
     }
   };
 
-  // ✅ Logout function
-  const logout = async () => {
-    try {
-      await api.post(
-        `${config.API_BASE_URL}/auth/logout`,
-        {},
-      );
-      setIsAuthenticated(false);
-      setUser(null);
+  // ✅ Login
+const login = async (userData) => {
+  try {
+    const response = await api.post("/auth/login", userData);
 
-      console.log("🔄 Resetting CSRF token after logout...");
-      resetCsrf();
-    } catch (error) {
-      console.error("❌ Logout failed:", error);
+    if (response.status !== 200) {
+      throw new Error("Unauthorized"); // ensure failure is caught
     }
+
+    const { accessToken, refreshToken } = response.data;
+
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("refreshToken", refreshToken);
+    setAccessToken(accessToken);
+
+    const userPayload = decodeJWT(accessToken);
+    setUser(userPayload);
+    setIsAuthenticated(true);
+  } catch (err) {
+    setIsAuthenticated(false); // ⛔ Revoke auth flag
+    setUser(null);
+    throw err; // bubble up to frontend for UI error
+  }
+};
+
+
+  // ✅ Logout
+  const logout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    setAccessToken(null);
+    setUser(null);
   };
+
+  // ✅ Check token on load
+  useEffect(() => {
+    if (accessToken) {
+      const payload = decodeJWT(accessToken);
+      setUser(payload);
+      setIsAuthenticated(true); // ✅ Ensure auth is marked as restored
+    } else {
+      setIsAuthenticated(false); // ✅ Handle logout/reload edge cases
+    }
+  }, []);
+
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout}}>
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated: !!accessToken,
+      accessToken,
+      login,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export default AuthContext;
-export {AuthProvider};
-
+export { AuthProvider };

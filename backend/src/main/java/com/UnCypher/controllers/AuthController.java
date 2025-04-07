@@ -1,42 +1,48 @@
 package com.UnCypher.controllers;
 
-import com.UnCypher.services.AuthService;
 import com.UnCypher.models.AuthCred;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import com.UnCypher.security.JwtAuthenticationResponse;
+import com.UnCypher.services.AuthService;
+import com.UnCypher.models.dto.RefreshRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
-    private final AuthService service;
+
+    private final AuthService authService;
 
     @Autowired
-    public AuthController(AuthService service){
-        this.service = service;
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
+
+    /**
+     * 🔐 Login endpoint: Accepts credentials and returns JWTs.
+     */
+    @PostMapping("/login")
+    public ResponseEntity<JwtAuthenticationResponse> login(@RequestBody AuthCred credentials) {
+        JwtAuthenticationResponse tokens = authService.login(credentials.getEmail(), credentials.getPassword());
+        return ResponseEntity.ok(tokens);
+    }
+
+    /**
+     * ♻️ Refresh endpoint: Accepts refresh token and returns new access token.
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<JwtAuthenticationResponse> refresh(@RequestBody RefreshRequest refreshRequest) {
+        JwtAuthenticationResponse tokens = authService.refreshToken(refreshRequest.getRefreshToken());
+        return ResponseEntity.ok(tokens);
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<String> registerUser(@RequestBody AuthCred cred){
-        return service.registerUser(cred);
+    public ResponseEntity<String> registerUser(@RequestBody AuthCred cred) {
+        return authService.registerUser(cred);
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestBody AuthCred cred, HttpServletRequest request){
-        if(service.loginUser(cred.getEmail(), cred.getPassword(), request)){
-            return ResponseEntity.ok("Login successful!");
-        }
-        else{
-            //invalid
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Invalid user name or password!");
-        }
-    }
-    @PostMapping("/logout")
-    public ResponseEntity<String> logoutUser(HttpServletRequest request, HttpServletResponse response){
-        return service.logoutUser(request, response);
-    }
 }
+
 

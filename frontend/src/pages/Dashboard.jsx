@@ -2,47 +2,45 @@ import React, { useState } from "react";
 import Map from "../components/Map";
 import LocToggle from "../components/LocToggle";
 import LocInfo from "../components/LocInfo";
-import InsightToggle from "../components/InsightToggle";
-import Insights from "../components/Insights";
 import useUserLocation from "../hooks/useUserLocation";
 
 const Dashboard = () => {
-    const [isTracking, setIsTracking] = useState(false);
-    const [allowInsight, setAllowInsight] = useState(false);
-    const { location, error, loading } = useUserLocation(isTracking);
+  const [isTracking, setIsTracking] = useState(false);
+  const { location, error, loading } = useUserLocation(isTracking);
 
-    return (
-        <div className="dashboard">
-            <div className="right-panel">
-                <Map position={location ? [location.lat, location.lng] : null} />
-            </div>
-            <div className="left-panel">
-                <h2>🌍 UnCypher Dashboard</h2>
-                <LocToggle
-                    isTracking={isTracking}
-                    toggleTracking={() => setIsTracking(!isTracking)}
-                />
-                {error && <p className="error-message">{error}</p>}
-                {loading && <p>⏳ Fetching location...</p>}
-                <LocInfo locationData={location} />
+  return (
+    <section className="space-y-8 px-4 md:px-6">
+      {/* Section Title + Toggle */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">
+          📍 Location Settings
+        </h2>
+        <LocToggle
+          isTracking={isTracking}
+          toggleTracking={() => setIsTracking((prev) => !prev)}
+        />
+      </div>
 
-                {location && (
-                    <InsightToggle
-                        allowInsight={allowInsight}
-                        toggleInsight={() => setAllowInsight(!allowInsight)}
-                        location={[location.lat, location.lng]}
-                    />
-                )}
+      {/* Location Info */}
+      <div className="space-y-3 text-sm text-gray-800 dark:text-gray-100">
+        {error && (
+          <p className="text-red-500 font-medium">⚠️ {error}</p>
+        )}
+        {loading && (
+          <p className="text-gray-500">⏳ Fetching location...</p>
+        )}
+        {location && (
+          <LocInfo locationData={location} />
+        )}
+      </div>
 
-                {allowInsight && location && (
-                    <Insights
-                        data={location}
-                        allowInsight={allowInsight}
-                    />
-                )}
-            </div>
-        </div>
-    );
+      {/* Map Block */}
+      <div className="rounded-xl overflow-hidden shadow border border-gray-200 dark:border-zinc-700">
+        <Map position={location ? [location.lat, location.lng] : null} />
+      </div>
+    </section>
+  );
 };
 
 export default Dashboard;
+

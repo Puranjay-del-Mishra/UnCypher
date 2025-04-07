@@ -1,34 +1,50 @@
-import { useState } from 'react'
-import AuthPage from './pages/AuthPage.jsx'
-import Dashboard  from './pages/Dashboard.jsx'
-import './App.css'
-import { Link, BrowserRouter as  Router, Routes, Route } from 'react-router-dom';
-import logo from './assets/uncypher_logo.png'
-import './styles/Navbar.css';
+import { Navigate, BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import AuthPage from "./pages/AuthPage.jsx";
+import AppLayout from "./pages/AppLayout.jsx";  // NEW shared layout
+import Dashboard from "./pages/Dashboard.jsx";
+import InsightsPage from "./pages/InsightsPage.jsx";
+import SettingsPage from "./pages/SettingsPage.jsx";
+import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider } from "./context/AuthContext";
+import PrivateRoute from "./routes/PrivateRoute";
+import ThemeFadeOverlay from "./components/ThemeFadeOverlay";
+
+import "./App.css"; // Optional legacy styles
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <Router>
-      <Navbar />
-      <Routes>
-          <Route path="/" element = {<AuthPage />}/>
-          <Route path="/dashboard" element= {<Dashboard />}/>
-      </Routes>
-    </Router>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <ThemeFadeOverlay />
+          <Routes>
+            {/* Public Route */}
+            <Route path="/" element={<AuthPage />} />
+
+            {/* Protected App Shell */}
+            <Route
+              path="/app"
+              element={
+                <PrivateRoute>
+                  <AppLayout />
+                </PrivateRoute>
+              }
+            >
+              {/* ✅ Default: /app → /app/dashboard */}
+              <Route index element={<Navigate to="dashboard" replace />} />
+
+              {/* ✅ Sub-pages */}
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="insights" element={<InsightsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
+
 }
 
-function Navbar(){
-return (
-       <nav className='nav'>
-        <Link to="/" className="nav-logo">
-            <img src={logo} alt="UnCypher Logo" className="logo" />
-            <span className="brand-name">UnCypher</span>
-        </Link>
-       </nav>
-    );
-}
+export default App;
 
-export {App, Navbar};
