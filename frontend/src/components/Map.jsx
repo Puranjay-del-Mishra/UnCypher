@@ -2,8 +2,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import "leaflet-routing-machine";
-import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import markerIcon from "../pngs/marker-icon.png";
 import markerShadow from "../pngs/marker-shadow.png";
 import markerIconRetina from "../pngs/marker-icon-2x.png";
@@ -39,27 +37,34 @@ const RoutingControl = ({ from, to, onRouteChange }) => {
   useEffect(() => {
     if (!from || !to || !map) return;
 
-    if (routingRef.current) {
-      map.removeControl(routingRef.current);
-    }
+    let isMounted = true;
 
-    routingRef.current = L.Routing.control({
-      waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
-      routeWhileDragging: true,
-      show: false,
-      createMarker: (i, wp) => L.marker(wp.latLng, { draggable: true }),
-    })
-      .on("routesfound", (e) => {
-        const route = e.routes[0];
-        const summary = route.summary;
-        onRouteChange({
-          distance: (summary.totalDistance / 1000).toFixed(2) + " km",
-          time: (summary.totalTime / 60).toFixed(0) + " min",
-        });
+    import("leaflet-routing-machine").then(() => {
+      if (!isMounted) return;
+
+      if (routingRef.current) {
+        map.removeControl(routingRef.current);
+      }
+
+      routingRef.current = L.Routing.control({
+        waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
+        routeWhileDragging: true,
+        show: false,
+        createMarker: (i, wp) => L.marker(wp.latLng, { draggable: true }),
       })
-      .addTo(map);
+        .on("routesfound", (e) => {
+          const route = e.routes[0];
+          const summary = route.summary;
+          onRouteChange({
+            distance: (summary.totalDistance / 1000).toFixed(2) + " km",
+            time: (summary.totalTime / 60).toFixed(0) + " min",
+          });
+        })
+        .addTo(map);
+    });
 
     return () => {
+      isMounted = false;
       if (routingRef.current) {
         map.removeControl(routingRef.current);
       }

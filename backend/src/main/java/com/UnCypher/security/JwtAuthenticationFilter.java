@@ -10,14 +10,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
-
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -47,32 +46,39 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String token = authHeader.substring(7);
 
         try {
-            String username = jwtUtil.extractUsername(token);
+            String userId = jwtUtil.extractUserId(token);
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-                // 🔓 Extract roles directly from token
-                List<String> roleClaims = jwtUtil.extractAllClaims(token).get("roles", List.class);
-                List<SimpleGrantedAuthority> authorities = roleClaims.stream()
-                        .map(SimpleGrantedAuthority::new)
-                        .toList();
-
-                // Optional: validate user still exists (or skip for perf)
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
 
                 if (jwtUtil.isTokenValid(token, userDetails)) {
+                    // ✅ Now safe to extract claims
+                    var claims = jwtUtil.extractAllClaims(token);
+                    List<String> roles = claims.get("roles", List.class);
+
+                    List<SimpleGrantedAuthority> authorities = roles.stream()
+                            .map(SimpleGrantedAuthority::new)
+                            .collect(Collectors.toList());
+
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
 
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                    System.out.println("✅ JWT Auth successful → user: " + userDetails.getUsername());
+                } else {
+                    System.out.println("❌ JWT token was not valid for userId: " + userId);
                 }
             }
 
         } catch (Exception ex) {
-            ex.printStackTrace(); // You can replace with structured logging
+            System.out.println("❌ JWT verification failed: " + ex.getMessage());
+            ex.printStackTrace();
         }
 
         filterChain.doFilter(request, response);
     }
 }
+
+
 

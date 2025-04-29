@@ -73,9 +73,11 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/auth/**", "/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/admin/generate-agent-token").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/insights/**").hasAnyRole("USER", "ANALYST", "ADMIN")
+                        .requestMatchers("/api/insights/**").hasAnyRole("USER", "ANALYST", "ADMIN", "AGENT")
+                        .requestMatchers("/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
@@ -140,14 +142,19 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(allowedOrigins);
+        config.setAllowedOriginPatterns(allowedOrigins); // e.g. [http://localhost:3000]
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-XSRF-TOKEN"));
         config.setExposedHeaders(List.of("Authorization", "X-CSRF-TOKEN"));
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
+
+        // Register explicitly for SockJS info route
+        source.registerCorsConfiguration("/ws/**", config);
+        source.registerCorsConfiguration("/ws/info", config); // 👈 critical for SockJS preflight
+        source.registerCorsConfiguration("/**", config); // fallback for general API
+
         return source;
     }
 

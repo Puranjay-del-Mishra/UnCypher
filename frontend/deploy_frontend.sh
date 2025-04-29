@@ -9,4 +9,5 @@ if [ -n "$PID" ]; then
 else
     echo "No process found running on port $PORT."
 fi
+rm -rf node_modules/.vite
 npm run dev

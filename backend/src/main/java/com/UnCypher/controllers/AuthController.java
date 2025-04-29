@@ -1,7 +1,7 @@
 package com.UnCypher.controllers;
 
 import com.UnCypher.models.AuthCred;
-import com.UnCypher.security.JwtAuthenticationResponse;
+import com.UnCypher.models.dto.JwtAuthenticationResponse;
 import com.UnCypher.services.AuthService;
 import com.UnCypher.models.dto.RefreshRequest;
 import org.springframework.beans.factory.annotation.Autowired;

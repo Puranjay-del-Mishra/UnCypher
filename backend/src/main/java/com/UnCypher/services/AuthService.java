@@ -3,26 +3,24 @@ package com.UnCypher.services;
 import com.UnCypher.models.AuthCred;
 import com.UnCypher.repo.AuthRepo;
 import com.UnCypher.security.JwtUtil;
-import com.UnCypher.security.JwtAuthenticationResponse;
+import com.UnCypher.models.dto.JwtAuthenticationResponse;
+import org.springframework.security.core.Authentication;
 import com.UnCypher.utils.PasswordBreachChecker;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
-
-
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
+
 
 @Service
 public class AuthService {
@@ -44,12 +42,10 @@ public class AuthService {
     }
 
     public ResponseEntity<String> registerUser(AuthCred cred) {
-        // 1️⃣ Duplicate check
         if (authRepo.findByEmail(cred.getEmail()) != null) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("User already exists!");
         }
 
-        // 2️⃣ Password breach check (skip for dev)
         if (!cred.getEmail().equalsIgnoreCase("testacc@gmail.com")) {
             boolean breached = PasswordBreachChecker.isBreached(cred.getPassword());
             if (breached) {
@@ -58,15 +54,12 @@ public class AuthService {
             }
         }
 
-        // 3️⃣ Hash password
         PasswordEncoder encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
         String hashedPassword = encoder.encode(cred.getPassword());
         cred.setPassword(hashedPassword);
+        cred.setUserId(UUID.randomUUID().toString());
+        cred.setRoles(List.of("USER"));
 
-        // 4️⃣ Set roles
-        cred.setRoles(List.of("USER")); // ✅ Correct format
-
-        // 5️⃣ Save to DB
         try {
             authRepo.saveCredentials(cred);
             return ResponseEntity.ok("User registered successfully!");
@@ -82,15 +75,15 @@ public class AuthService {
             System.out.println("🔐 [AuthService] Login attempt for: " + email);
 
             Authentication authRequest = new UsernamePasswordAuthenticationToken(email, password);
-            authenticationManager.authenticate(authRequest);  // 💥 This is where it fails if user not found
+            authenticationManager.authenticate(authRequest);
 
-            System.out.println("✅ [AuthService] AuthenticationManager passed");
+            AuthCred auth = authRepo.findByEmail(email);
+            if (auth == null) throw new BadCredentialsException("User not found");
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-            System.out.println("✅ [AuthService] Loaded user: " + userDetails.getUsername());
 
-            String accessToken = jwtUtil.generateAccessToken(userDetails);
-            String refreshToken = jwtUtil.generateRefreshToken(userDetails);
+            String accessToken = jwtUtil.generateAccessToken(auth.getUserId(), userDetails);
+            String refreshToken = jwtUtil.generateRefreshToken(auth.getUserId(), userDetails);
 
             return new JwtAuthenticationResponse(accessToken, refreshToken);
         } catch (BadCredentialsException ex) {
@@ -103,17 +96,17 @@ public class AuthService {
         }
     }
 
-
     public JwtAuthenticationResponse refreshToken(String refreshToken) {
-        String username = jwtUtil.extractUsername(refreshToken);
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        String userId = jwtUtil.extractUserId(refreshToken); // ✅ FIXED
 
+        UserDetails userDetails = userDetailsService.loadUserByUsername(userId); // assuming userId is used here
         if (!jwtUtil.isTokenValid(refreshToken, userDetails)) {
             throw new BadCredentialsException("Invalid refresh token");
         }
 
-        String newAccessToken = jwtUtil.generateAccessToken(userDetails);
+        String newAccessToken = jwtUtil.generateAccessToken(userId, userDetails);
         return new JwtAuthenticationResponse(newAccessToken, refreshToken);
     }
 }
+
 

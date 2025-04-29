@@ -1,70 +1,85 @@
 package com.UnCypher.controllers;
 
+import com.UnCypher.models.dto.InsightRequest;
+import com.UnCypher.models.dto.InsightResponse;
+import com.UnCypher.models.dto.PassiveInsightRequest;
+import com.UnCypher.models.dto.PassiveInsightResponse;
+import com.UnCypher.models.dto.ChatMessage;
+import com.UnCypher.services.LLMService;
+import com.UnCypher.services.RedisService;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.http.ResponseEntity;
-import jakarta.servlet.http.HttpSession;
-import java.util.Map;
-import org.springframework.security.web.csrf.CsrfToken;
-import jakarta.servlet.http.HttpServletRequest;
-import com.UnCypher.services.LLMService;
-import com.UnCypher.utils.InsightPostProcessor;
-import com.UnCypher.utils.InsightPreProcessor;
-import org.springframework.web.bind.annotation.RequestBody;
-import com.UnCypher.models.dto.InsightResponseDTO;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.List;
 
 @RestController
-@RequestMapping("/insights")
-public class InsightsController{
-    private final LLMService llmService;
+@RequestMapping("/api/insights")
+@RequiredArgsConstructor
+public class InsightsController {
 
-    public InsightsController(LLMService llmService) {
-        this.llmService = llmService;
-    }
+    private static final Logger logger = LoggerFactory.getLogger(InsightsController.class);
+    private final LLMService llmService;
+    private final RedisService redisService;
 
     @PostMapping("/test_ping")
-    public ResponseEntity<Map<String, String>> testInsight(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
-        String headerToken = request.getHeader("X-XSRF-TOKEN");
-
-        System.out.println("=== 🔍 CSRF Debug ===");
-        System.out.println("🔐 Session ID: " + (session != null ? session.getId() : "null"));
-        System.out.println("🍪 CSRF token in session (from attribute): " + (token != null ? token.getToken() : "null"));
-        System.out.println("📨 CSRF token in header: " + headerToken);
-        System.out.println("=====================");
-
-        return ResponseEntity.ok(Map.of("message", "Insight received"));
+    public ResponseEntity<String> testPing() {
+        return ResponseEntity.ok("Insight service is reachable.");
     }
 
-    @PostMapping("/basic_insights")
-    public ResponseEntity<InsightResponseDTO> getBasicInsights(HttpServletRequest request, @RequestBody Map<String, Object> requestData) {
-        HttpSession session = request.getSession(true);
-//        CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
-        String headerToken = request.getHeader("X-XSRF-TOKEN");
-        CsrfToken token = (CsrfToken) request.getAttribute("_csrf");
+    @PostMapping("/passive")
+    public ResponseEntity<PassiveInsightResponse> getPassiveInsights(
+            @RequestBody PassiveInsightRequest request
+    ) {
+        logger.info("🔄 [UnCypher] Fetching passive insights for user: {}", request.getUserId());
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("🔍 Auth in controller: " + (auth != null ? auth.getName() : "null"));
-        System.out.println("🔐 Is authenticated: " + (auth != null && auth.isAuthenticated()));
+        Map<String, Object> locationData = safeCast(request.getMeta());
+        PassiveInsightResponse response = llmService.generatePassiveInsightFromAgent(
+                request.getUserId(),
+                "defaultLocality",
+                locationData
+        );
 
-
-        System.out.println("⚙️  Token at controller: " + (token != null ? token.getToken() : "null"));
-
-        System.out.println("🔐 Session ID: " + (session != null ? session.getId() : "null"));
-        System.out.println("🍪 XSRF-TOKEN (cookie): " + headerToken);
-        System.out.println("🔖 CSRF token from attribute: " + (token != null ? token.getToken() : "null"));
-
-        Map<String, Object> llmResult = llmService.generateInsights(requestData);
-        String rawLLMOutput = (String) llmResult.get("llmRawOutput");
-
-        InsightResponseDTO structured = InsightPostProcessor.extractInsights(rawLLMOutput);
-        return ResponseEntity.ok(structured);
+        return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/query")
+    public ResponseEntity<InsightResponse> getInsights(
+            @RequestBody InsightRequest request
+    ) {
+        logger.info("💬 [UnCypher] Query insight for user: {}, query: {}", request.getUserId(), request.getQuery());
+
+        Map<String, Object> locationData = safeCast(request.getContext());
+        InsightResponse response = llmService.generateInsightFromAgent(
+                request.getUserId(),
+                "defaultLocality",
+                locationData,
+                request.getQuery()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/chat/save")
+    public ResponseEntity<Void> saveChat(@RequestBody ChatMessage chatMessage) {
+        redisService.saveChatMessage(chatMessage.getUserId(), chatMessage);
+        return ResponseEntity.ok().build();
+    }
+    @GetMapping("/history/{userId}")
+    public ResponseEntity<List<ChatMessage>> getChatHistory(@PathVariable String userId) {
+        List<ChatMessage> chatHistory = redisService.getChatHistory(userId); // Assume it pulls from Redis list
+        return ResponseEntity.ok(chatHistory);
+    }
+
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> safeCast(Map<String, String> input) {
+        return input != null ? (Map<String, Object>) (Map<?, ?>) input : Collections.emptyMap();
+    }
+
 }
+

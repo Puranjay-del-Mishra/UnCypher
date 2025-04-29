@@ -1,7 +1,7 @@
 package com.UnCypher.models;
-
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 
 import java.util.List;
 
@@ -11,6 +11,7 @@ public class AuthCred {
     private String email;
     private String password;
     private List<String> roles;
+    private String userId; // ✅ NEW FIELD
 
     @DynamoDbPartitionKey
     public String getEmail() {
@@ -35,6 +36,15 @@ public class AuthCred {
 
     public void setRoles(List<String> roles) {
         this.roles = roles;
+    }
+
+    @DynamoDbAttribute("user_id") // ✅ Explicit attribute name
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 }
 

@@ -1,12 +1,42 @@
-import React, { useState } from "react";
-import Map from "../components/Map";
+import { useEffect } from "react";
+import { useUserId } from "../hooks/useUserId";
+import useUserLocation from "../hooks/useUserLocation";
+import { useLocStore } from "../store/useLocStore";
+
+import { useUserStateSync } from "../hooks/useUserStateSync";
+import usePassiveInsightSocket from "../hooks/usePassiveInsightSocket";
+
 import LocToggle from "../components/LocToggle";
 import LocInfo from "../components/LocInfo";
-import useUserLocation from "../hooks/useUserLocation";
+import Map from "../components/Map";
 
 const Dashboard = () => {
-  const [isTracking, setIsTracking] = useState(false);
-  const { location, error, loading } = useUserLocation(isTracking);
+  const userId = useUserId();
+  const {
+    isTracking,
+    setTracking,
+    location,
+    setLocation,
+  } = useLocStore();
+
+  const {
+    location: trackedLocation,
+    error,
+    loading,
+  } = useUserLocation(isTracking);
+
+  // Sync location into global state
+  useEffect(() => {
+    if (trackedLocation) setLocation(trackedLocation);
+  }, [trackedLocation]);
+
+  // Global passive features
+  useUserStateSync(); // → Tracks location + biometrics & POSTs to backend
+  usePassiveInsightSocket(); // → Receives passive insights over WebSocket
+
+  if (!userId) {
+    return <p className="text-red-600">🚫 Could not identify user.</p>;
+  }
 
   return (
     <section className="space-y-8 px-4 md:px-6">
@@ -17,30 +47,29 @@ const Dashboard = () => {
         </h2>
         <LocToggle
           isTracking={isTracking}
-          toggleTracking={() => setIsTracking((prev) => !prev)}
+          toggleTracking={() => setTracking(!isTracking)}
         />
       </div>
 
-      {/* Location Info */}
+      {/* Location Info Block */}
       <div className="space-y-3 text-sm text-gray-800 dark:text-gray-100">
-        {error && (
-          <p className="text-red-500 font-medium">⚠️ {error}</p>
-        )}
-        {loading && (
-          <p className="text-gray-500">⏳ Fetching location...</p>
-        )}
-        {location && (
-          <LocInfo locationData={location} />
-        )}
+        {error && <p className="text-red-500 font-medium">⚠️ {error}</p>}
+        {loading && <p className="text-gray-500">⏳ Fetching location...</p>}
+        {location && <LocInfo locationData={location} />}
       </div>
 
-      {/* Map Block */}
+      {/* Map Section */}
       <div className="rounded-xl overflow-hidden shadow border border-gray-200 dark:border-zinc-700">
-        <Map position={location ? [location.lat, location.lng] : null} />
+        {location ? (
+          <Map position={[location.lat, location.lng]} />
+        ) : (
+          <div className="text-zinc-500 text-sm p-4">
+            📍 Location not available. Enable tracking above to view the map.
+          </div>
+        )}
       </div>
     </section>
   );
 };
 
 export default Dashboard;
-

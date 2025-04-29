@@ -22,6 +22,8 @@ const AuthProvider = ({ children }) => {
   // ✅ Login
 const login = async (userData) => {
   try {
+
+    console.log("🟡 Login function called");
     const response = await api.post("/auth/login", userData);
 
     if (response.status !== 200) {
@@ -35,6 +37,7 @@ const login = async (userData) => {
     setAccessToken(accessToken);
 
     const userPayload = decodeJWT(accessToken);
+    console.log("✅ Decoded JWT payload:", userPayload);
     setUser(userPayload);
     setIsAuthenticated(true);
   } catch (err) {
