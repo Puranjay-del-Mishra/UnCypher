@@ -1,6 +1,4 @@
-# DrawGPT
-Text to image converter that produces beautiful illustrations using a description. 
+# UnCypher
+Coming soon!
 
-https://puranjay-del-mishra.github.io/DrawGPT/
-
-Check out the above link for the overview, setup and reproduction details.
+Intellijent navigation assistant, that does a lot more than just show directions!
