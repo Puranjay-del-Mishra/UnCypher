@@ -2,23 +2,19 @@ import { useEffect, useState, useRef } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useUserId } from "../hooks/useUserId";
 import api from "../utils/api";
+import { useMapboxContext } from "../context/MapboxProvider";
 
 export default function ChatWindow() {
   const { userId, setUserId, messages, setMessages, addMessage } = useChatStore();
   const authUserId = useUserId();
   const [input, setInput] = useState("");
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(6);
   const bottomRef = useRef(null);
+  const { mapInstance } = useMapboxContext();
 
-  // Set userId when available
   useEffect(() => {
-    if (authUserId) {
-      setUserId(authUserId);
-    }
+    if (authUserId) setUserId(authUserId);
   }, [authUserId, setUserId]);
 
-  // Fetch messages from server
   useEffect(() => {
     async function fetchRecentMessages() {
       if (!userId) return;
@@ -43,7 +39,6 @@ export default function ChatWindow() {
     fetchRecentMessages();
   }, [userId, setMessages]);
 
-  // Auto-scroll to bottom when new messages come
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -61,21 +56,54 @@ export default function ChatWindow() {
     setInput("");
 
     try {
+      const center = mapInstance?.getCenter();
+      const userLocation = center
+        ? { lat: center.lat, lng: center.lng }
+        : null;
+
+      const isValidCoords = (lat, lng) =>
+        typeof lat === "number" &&
+        typeof lng === "number" &&
+        !Number.isNaN(lat) &&
+        !Number.isNaN(lng) &&
+        (lat !== 0 || lng !== 0);
+
+      if (!userLocation || !isValidCoords(userLocation.lat, userLocation.lng)) {
+        console.warn("❌ Invalid location, skipping insight request:", userLocation);
+        return;
+      }
+
       const insightRequest = {
         userId,
         query: input,
-        location: null,
+        location: `${userLocation.lat},${userLocation.lng}`,
         timestamp: new Date().toISOString(),
         sensors: null,
-        context: { page: "insight-tab" },
+        context: {
+          page: "insight-tab",
+          lat: userLocation.lat.toString(),
+          lng: userLocation.lng.toString(),
+        },
       };
 
       const res = await api.post("/api/insights/query", insightRequest);
       const data = res.data;
 
+      let assistantText = "No response available.";
+
+      if (data.answer?.trim()) {
+        assistantText = data.answer;
+      } else if (data.intents?.length) {
+        if (data.intents.includes("navigation")) {
+          assistantText = "📍 Navigation updated. Please check the map.";
+        } else if (data.intents.includes("poi")) {
+          assistantText = "📍 Points of interest added to the map.";
+        }
+      }
+
       const assistantMessage = {
         sender: "assistant",
-        text: data.answer || "No response available.",
+        text: assistantText,
         timestamp: new Date().toISOString(),
       };
 
@@ -85,66 +113,16 @@ export default function ChatWindow() {
     }
   }
 
-  function handleLoadMore() {
-    if (loadingMore) return;
-    setLoadingMore(true);
-
-    const prevHeight = bottomRef.current?.parentElement?.scrollHeight || 0;
-
-    setTimeout(() => {
-      setVisibleCount((prev) => prev + 6);
-      setLoadingMore(false);
-
-      const newHeight = bottomRef.current?.parentElement?.scrollHeight || 0;
-      const scrollDiff = newHeight - prevHeight;
-      bottomRef.current?.parentElement?.scrollBy({ top: scrollDiff, behavior: "smooth" });
-    }, 500);
-  }
-
-
-  const visibleMessages = messages.slice(-visibleCount);
-
   return (
-    <div className="flex-1 bg-background p-4 rounded-xl shadow-md flex flex-col text-foreground">
-      <div className="flex-1 overflow-y-auto space-y-2 mb-4">
-        {messages.length > visibleMessages.length && (
-          <button
-            onClick={handleLoadMore}
-            disabled={loadingMore}
-            className="flex items-center gap-2 text-xs text-muted-foreground underline mb-2"
-          >
-            {loadingMore ? (
-              <>
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8H4z"
-                  ></path>
-                </svg>
-                Loading...
-              </>
-            ) : (
-              "Load more"
-            )}
-          </button>
-        )}
+    <div className="bg-background rounded-xl shadow-lg p-4 flex flex-col w-full max-w-2xl max-h-[400px]">
 
-        {visibleMessages.map((msg, idx) => (
+      {/* Messages Scrollable */}
+      <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+        {messages.map((msg, idx) => (
           <div
             key={idx}
             className={`max-w-xl px-4 py-2 rounded-lg ${
-              msg.sender === "user"
-                ? "bg-primary text-white self-end"
-                : "bg-muted self-start"
+              msg.sender === "user" ? "bg-primary text-white self-end" : "bg-muted self-start"
             }`}
           >
             {msg.text}
@@ -153,13 +131,11 @@ export default function ChatWindow() {
         <div ref={bottomRef} />
       </div>
 
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend();
-        }}
-      >
+      {/* Input */}
+      <form className="flex gap-2" onSubmit={(e) => {
+        e.preventDefault();
+        handleSend();
+      }}>
         <input
           className="flex-1 p-2 bg-muted rounded text-foreground placeholder:text-muted-foreground"
           value={input}
@@ -173,9 +149,5 @@ export default function ChatWindow() {
     </div>
   );
 }
-
-
-
-
 
 

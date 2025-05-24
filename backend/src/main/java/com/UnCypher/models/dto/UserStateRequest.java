@@ -8,4 +8,5 @@ public class UserStateRequest {
     private String userId;
     private String timestamp;
     private Map<String, Object> state; // Nested structure from frontend
+    private Boolean hasInsight;
 }

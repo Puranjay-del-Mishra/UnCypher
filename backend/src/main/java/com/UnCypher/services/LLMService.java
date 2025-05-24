@@ -49,6 +49,18 @@ public class LLMService implements InsightService {
         ).get();
     }
 
+    public InsightAgentResponse callInsightAgent(InsightRequest request) {
+        return Try.ofSupplier(
+                Retry.decorateSupplier(aiAgentRetry, () ->
+                        restTemplate.postForObject(
+                                insightAgentUrl + "/infer",
+                                request,
+                                InsightAgentResponse.class
+                        )
+                )
+        ).get();
+    }
+
     @Override
     public PassiveInsightResponse getCachedInsight(String localityId) {
         return redisTemplate.opsForValue().get("locality:" + localityId);
@@ -91,10 +103,14 @@ public class LLMService implements InsightService {
         return getPassiveInsights(request);
     }
 
+
+
     // Helpers
     private String buildLocationString(Map<String, Object> locationData) {
-        return locationData.getOrDefault("city", "Unknown") + ", " +
-                locationData.getOrDefault("country", "Unknown");
+        if (locationData.get("lat") != null && locationData.get("lng") != null) {
+            return locationData.get("lat") + "," + locationData.get("lng");
+        }
+        return "Unknown, Unknown";
     }
 
     private Map<String, String> convertMapToStringValues(Map<String, Object> input) {

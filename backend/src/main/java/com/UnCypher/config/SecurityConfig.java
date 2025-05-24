@@ -74,6 +74,9 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/auth/refresh").permitAll()
+                        .requestMatchers("/api/poi/resolve-destination").permitAll()
+                        .requestMatchers("/api/navigation/route").permitAll()
+                        .requestMatchers("/api/insights/mapcommand").permitAll()
                         .requestMatchers(HttpMethod.GET, "/admin/generate-agent-token").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/insights/**").hasAnyRole("USER", "ANALYST", "ADMIN", "AGENT")

@@ -7,6 +7,7 @@ public class PassiveInsightRequest {
     private String userId;
     private String location;
     private String timestamp; // ISO 8601
+    private Boolean hasPassiveInsight;
 
     // Optional context
     private String deviceType;         // "mobile", "wearable", "vehicle", etc.
