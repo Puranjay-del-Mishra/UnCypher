@@ -33,6 +33,7 @@ public class UserStateService {
         final String userId = request.getUserId();
         final Map<String, Object> currentState = request.getState();
         final String deviceType = (String) currentState.get("device");
+        final boolean clientHasInsight = Optional.ofNullable(request.getHasInsight()).orElse(false);
 
         final Map<String, Object> schema = UserStateSchemaProvider.getSchemaForUser(userId, deviceType);
         final UserStateCacheEntry cachedEntry = redisService.getUserState("user:state:" + userId).orElse(null);
@@ -42,7 +43,7 @@ public class UserStateService {
         updatedEntry.setState(currentState);
         updatedEntry.setLastUpdated(Instant.now().toString());
 
-        updateLocalityAndInsights(userId, currentState, previousState, schema, updatedEntry);
+        updateLocalityAndInsights(userId, currentState, previousState, schema, updatedEntry, clientHasInsight);
     }
 
     @SuppressWarnings("unchecked")
@@ -51,7 +52,8 @@ public class UserStateService {
             Map<String, Object> currentState,
             Map<String, Object> previousState,
             Map<String, Object> schema,
-            UserStateCacheEntry updatedEntry
+            UserStateCacheEntry updatedEntry,
+            boolean clientHasInsight
     ) {
         Map<String, Object> location = (Map<String, Object>) currentState.get("location");
         if (location == null || location.get("lat") == null || location.get("lng") == null) return;
@@ -67,14 +69,18 @@ public class UserStateService {
 
         boolean localityChanged = StateComparator.hasStateChanged(currentState, previousState, schema);
 
-        log.debug("\uD83D\uDCCD [{}] Previous locality: {}, New: {}, Changed? {}", userId, cachedLocalityId, newLocalityId, localityChanged);
+        log.debug("📍 [{}] Previous locality: {}, New: {}, Changed? {}, ClientHasInsight: {}",
+                userId, cachedLocalityId, newLocalityId, localityChanged, clientHasInsight);
 
-        PassiveInsightResponse insight = redisService.getPassiveInsight(newLocalityId)
-                .orElseGet(() -> {
-                    PassiveInsightResponse generated = llmService.generatePassiveInsightFromAgent(userId, newLocalityId, location);
-                    redisService.cachePassiveInsight(newLocalityId, generated, Duration.ofHours(6));
-                    return generated;
-                });
+        // ✅ Always fetch from Redis (passive insight is locality-scoped)
+        Optional<PassiveInsightResponse> cachedInsightOpt = redisService.getPassiveInsight(newLocalityId);
+        PassiveInsightResponse insight = cachedInsightOpt.orElseGet(() -> {
+            PassiveInsightResponse generated = llmService.generatePassiveInsightFromAgent(userId, newLocalityId, location);
+            if (localityChanged) {
+                redisService.cachePassiveInsight(newLocalityId, generated, Duration.ofHours(6));
+            }
+            return generated;
+        });
 
         Map<String, Object> socketPayload = InsightSocketPayloadMapper.toSocketPayload(
                 userId,
@@ -84,9 +90,18 @@ public class UserStateService {
                 location.getOrDefault("city", "Unknown") + ", " + location.getOrDefault("country", "Unknown")
         );
 
-        if (localityChanged || cachedLocalityId == null) {
+        if (localityChanged || cachedLocalityId == null || !clientHasInsight) {
+            log.info("📤 Pushing passive insight to user {}, reason: {}", userId,
+                    localityChanged ? "localityChanged" :
+                            cachedLocalityId == null ? "firstTimeUser" :
+                                    "clientMissingInsight");
+
             pushPassiveInsightToUser(socketPayload, userId);
-            redisService.cacheString("user:locality:" + userId, newLocalityId, Duration.ofHours(6));
+        }
+
+        // Cache updated locality and user state regardless
+        if (localityChanged || cachedLocalityId == null) {
+            redisService.cacheString(localityCacheKey, newLocalityId, Duration.ofHours(6));
         }
 
         redisService.cacheUserState("user:state:" + userId, updatedEntry, Duration.ofHours(6));

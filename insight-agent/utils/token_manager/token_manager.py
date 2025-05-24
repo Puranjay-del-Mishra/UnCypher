@@ -20,7 +20,7 @@ class TokenManager:
             data = response.json()
             token = data["accessToken"]
             self.token = token
-            self.expiry = time.time() + (14 * 60)  # safe buffer: 14 minutes lifetime
+            self.expiry = time.time() + (300 * 60)  # safe buffer: 14 minutes lifetime
             os.environ["AGENT_TOKEN"] = token
             print("✅ [TokenManager] New agent token fetched and set.")
         except Exception as e:

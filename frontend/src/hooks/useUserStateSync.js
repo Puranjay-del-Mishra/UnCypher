@@ -3,6 +3,7 @@ import { useLocStore } from "../store/useLocStore";
 import { useUserId } from "./useUserId";
 import { useBiometricState } from "./useBiometricState";
 import { getAccessToken } from "../utils/auth.js"
+import { usePassiveInsightStore } from "../store/usePassiveInsightStore";
 
 export function useUserStateSync() {
   const userId = useUserId();
@@ -21,6 +22,7 @@ export function useUserStateSync() {
         accuracy: location.accuracy,
         city: location.city,
         country: location.country,
+        hasInsight: !!usePassiveInsightStore.getState().passiveInsight
       },
       device: "web",
       biometrics: biometrics || {},

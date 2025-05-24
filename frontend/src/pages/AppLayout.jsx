@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import ThemeFadeOverlay from "../components/ThemeFadeOverlay";
 import MapboxMap from "../components/mapbox/MapboxMap";
 import GlobalLayers from "../components/mapbox/GlobalLayers";
+import MapCommandProcessor from "../components/mapbox/MapCommandProcessor";
 
 const AppLayout = () => {
   return (
@@ -14,6 +15,7 @@ const AppLayout = () => {
         <div className="flex-1 flex flex-col relative">
           <MapboxMap initialCenter={[0, 0]} zoom={2}>
             <GlobalLayers />
+            <MapCommandProcessor />
           </MapboxMap>
 
           <div className="relative z-10">

@@ -60,7 +60,6 @@ const Dashboard = () => {
   return (
     <section className="space-y-8 px-4 md:px-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">📍 Location Settings</h2>
         <LocToggle isTracking={isTracking} toggleTracking={() => setTracking(!isTracking)} />
       </div>
 

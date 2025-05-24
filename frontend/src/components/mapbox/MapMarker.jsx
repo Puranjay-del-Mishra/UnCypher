@@ -2,14 +2,27 @@ import { useEffect } from "react";
 import { useMapboxContext } from "../../context/MapboxProvider";
 import mapboxgl from "mapbox-gl";
 
+const isValidCoords = (coords) => {
+  return (
+    coords &&
+    typeof coords.lat === "number" &&
+    typeof coords.lng === "number" &&
+    !isNaN(coords.lat) &&
+    !isNaN(coords.lng)
+  );
+};
+
 const MapMarker = ({ coords, color = "blue", iconUrl = null, popupText = "" }) => {
   const { mapInstance } = useMapboxContext();
 
-  // ✅ If map or coords are missing OR map not fully ready → do not render anything
-  if (!mapInstance || !coords || !mapInstance.isStyleLoaded()) return null;
-
   useEffect(() => {
-    if (!mapInstance || !coords || !mapInstance.isStyleLoaded()) return;
+    if (
+      !mapInstance ||
+      !mapInstance.isStyleLoaded() ||
+      !isValidCoords(coords)
+    ) {
+      return;
+    }
 
     let marker;
 
@@ -41,3 +54,4 @@ const MapMarker = ({ coords, color = "blue", iconUrl = null, popupText = "" }) =
 };
 
 export default MapMarker;
+
