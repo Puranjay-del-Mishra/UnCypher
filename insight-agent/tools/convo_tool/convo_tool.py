@@ -4,8 +4,7 @@ from typing import Dict
 class ConvoTool:
     name = "convo_tool"
     description = (
-        "Handles general conversational queries from the user that are not strictly navigational. "
-        "Provides friendly, bright, and simple responses based on the user's query alone."
+        "Handles general conversation with the user (possibly after carrying out mapping/navigation requests) based on user query and possibly intermittent outputs from other tools. Keep responses brief!"
     )
 
     def __init__(self):

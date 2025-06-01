@@ -1,7 +1,16 @@
 from langchain_ollama import OllamaLLM  # recommended for 0.3.1+ (future-proof)
 from typing import AsyncGenerator
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+import os
+import openai
+from openai import OpenAI
+
+from dotenv import load_dotenv
+
+load_dotenv()
+api_key=os.getenv("OPENROUTER_API_KEY")
+api_base = "https://openrouter.ai/api/v1"
 
 class HermesLLMPlanner:
     def __init__(self, streaming: bool = False):
@@ -18,7 +27,7 @@ class HermesLLMPlanner:
 
 class Planner:
     def __init__(self, strategy=None):
-        self.strategy = strategy or HFLlama3Planner()  # 🧠 Set LLaMA 3 as the new default
+        self.strategy = strategy or OpenRouterLlama3Planner()  # 🧠 Set LLaMA 3 as the new default
 
     def get_next_action(self, prompt: str) -> str:
         return self.strategy.generate(prompt)
@@ -41,31 +50,40 @@ class MistralPlanner:
             yield chunk.content
 
 
-class HFLlama3Planner:
-    def __init__(self, model_name: str = "meta-llama/Meta-Llama-3-8B-Instruct", streaming: bool = False):
+class OpenRouterLlama3Planner:
+    def __init__(self, model_name="meta-llama/llama-3.3-8b-instruct:free", streaming: bool = False):
+        self.model_name = model_name
         self.streaming_enabled = streaming
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.bfloat16,  # You can also use float16 if your GPU prefers it
-            device_map="auto",
-            attn_implementation="flash_attention_2",  # Uses FlashAttention if installed
-        )
-        self.model.eval()
+        self.client = OpenAI(api_key=api_key, base_url=api_base)
 
     def generate(self, prompt: str) -> str:
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=512,
-                do_sample=True,
-                top_p=0.95,
-                temperature=0.7,
-            )
-        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        print("prompt for LLMplanner: ", prompt)
+        response = self.client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are the LLM planner for an AI engine, which follows instructions of the user prompt"},
+                {"role": "user", "content": prompt},
+            ],
+            model=self.model_name,
+            temperature=0.7,
+            max_tokens=1024,
+            top_p=0.95,
+        )
+        print(response)
+        return response.choices[0].message.content
 
     async def stream(self, prompt: str) -> AsyncGenerator[str, None]:
-        output = self.generate(prompt)
-        for token in output.split():
-            yield token + " "
+        response = self.client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are the LLM planner for an AI engine, which follows instructions of the user prompt"},
+                {"role": "user", "content": prompt},
+            ],
+            model=self.model_name,
+            temperature=0.7,
+            max_tokens=1024,
+            top_p=0.95,
+            stream=True,
+        )
+
+        for chunk in response:
+            content = chunk.choices[0].delta.get("content", "")
+            yield content

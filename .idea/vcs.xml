@@ -2,11 +2,17 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/flash-attention.bak" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/flash-attention.bak/csrc/composable_kernel" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/flash-attention.bak/csrc/cutlass" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/llama-recipes.bak" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/llama3.bak" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/transformers.bak" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/flash-attention" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/flash-attention/csrc/composable_kernel" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/flash-attention/csrc/cutlass" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/llama-recipes" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/llama3" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/submodule_backup/flash-attention.bak" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/submodule_backup/flash-attention.bak/csrc/composable_kernel" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/submodule_backup/flash-attention.bak/csrc/cutlass" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/submodule_backup/llama-recipes.bak" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/submodule_backup/llama3.bak" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/submodule_backup/transformers.bak" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/transformers" vcs="Git" />
   </component>
 </project>

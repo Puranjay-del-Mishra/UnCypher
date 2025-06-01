@@ -1,16 +1,14 @@
 package com.UnCypher.services;
 
 import com.UnCypher.models.dto.MapCommand;
+import com.UnCypher.models.dto.POISnippets;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,99 +19,162 @@ public class POIService {
     @Value("${poi.provider.foursquare.apiKey}")
     private String foursquareApiKey;
 
-    public MapCommand getDestinationMarker(String userId, String destination, String locality) {
-        POI poi = getBestPOIMatch(locality, destination);
-        if (poi == null) return null;
-
-        MapCommand marker = new MapCommand();
-        marker.setType("add_marker");
-        marker.setId("dest-" + destination.toLowerCase().replace(" ", "-"));
-        marker.setCoords(List.of(poi.getLongitude(), poi.getLatitude()));
-        marker.setPopupText("Destination: " + poi.getName());
-        marker.setColor("yellow");
-        return marker;
-    }
-
-    public POI getBestPOIMatch(String locality, String destination) {
-        List<POI> pois = searchPOIs(locality, destination);
-        if (pois.isEmpty()) return null;
-
-        POI bestMatch = null;
-        double bestScore = Double.NEGATIVE_INFINITY;
+    public List<MapCommand> generateNearbyPOIMarkers(String userId, String category, String locality) {
+        List<POI> pois = searchMinimalPOIs(locality, category);
+        List<MapCommand> mapCommands = new ArrayList<>();
 
         for (POI poi : pois) {
-            double score = 0;
-            if (poi.getName().equalsIgnoreCase(destination)) {
-                score += 100;
-            } else if (poi.getName().toLowerCase().contains(destination.toLowerCase())) {
-                score += 50;
-            }
+            MapCommand marker = new MapCommand();
+            marker.setType("add_marker");
+            marker.setId("poi-" + poi.getId());
+            marker.setCoords(List.of(poi.getLongitude(), poi.getLatitude()));
+            marker.setPopupText(poi.getName());
+            marker.setColor("blue");
+            mapCommands.add(marker);
+        }
 
-            if (poi.getDistance() > 0) {
-                score += 1000.0 / (1.0 + poi.getDistance());
-            }
+        return mapCommands;
+    }
 
-            if (score > bestScore) {
-                bestScore = score;
-                bestMatch = poi;
+    public List<MapCommand> generateDefaultCategoryPOIs(String userId, String locality) {
+        List<String> defaultCategories = List.of("landmark", "park", "cafe", "museum", "attraction");
+        List<MapCommand> allMarkers = new ArrayList<>();
+
+        for (String category : defaultCategories) {
+            List<POI> pois = searchMinimalPOIs(locality, category);
+            for (POI poi : pois) {
+                MapCommand marker = new MapCommand();
+                marker.setType("add_marker");
+                marker.setId("poi-" + poi.getId() + "-" + category);
+                marker.setCoords(List.of(poi.getLongitude(), poi.getLatitude()));
+                marker.setPopupText(poi.getName() + " (" + category + ")");
+                marker.setColor("blue");
+                allMarkers.add(marker);
             }
         }
 
-        return bestMatch;
+        return allMarkers;
     }
 
-    public List<POI> searchPOIs(String locality, String category) {
+    public List<String> generatePOISnippets(String locality, String category) {
+        List<POISnippets> pois = searchPOISnippets(locality, category);
+        List<String> snippets = new ArrayList<>();
+
+        for (POISnippets poi : pois) {
+            String snippet = String.format(
+                    "%s (%s) — %s, %s [%s]. %s %d meters away. %s",
+                    poi.getName(),
+                    poi.getPrimaryCategory(),
+                    poi.getFormattedAddress(),
+                    poi.getLocality(),
+                    poi.getRegion(),
+                    poi.getCrossStreet() != null ? "Near " + poi.getCrossStreet() + "." : "",
+                    poi.getDistance(),
+                    poi.getChainName() != null ? "Part of " + poi.getChainName() + "." : ""
+            );
+            snippets.add(snippet);
+        }
+
+        return snippets;
+    }
+
+    // Uses minimal POI model — for marker commands
+    private List<POI> searchMinimalPOIs(String locality, String category) {
+        List<POISnippets> fullPOIs = searchPOISnippets(locality, category);
+        List<POI> minimal = new ArrayList<>();
+
+        for (POISnippets p : fullPOIs) {
+            minimal.add(new POI(p.getId(), p.getName(), p.getLatitude(), p.getLongitude()));
+        }
+
+        return minimal;
+    }
+
+    // Uses rich snippet DTO
+    public List<POISnippets> searchPOISnippets(String locality, String category) {
+        String param = locality.matches("^-?\\d{1,3}\\.\\d+,-?\\d{1,3}\\.\\d+$") ? "ll=" : "near=";
         String url = "https://api.foursquare.com/v3/places/search?query=" + category +
-                "&near=" + locality + "&limit=10";
+                "&" + param + locality + "&limit=10";
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", foursquareApiKey);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-        Map response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class).getBody();
-        List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+        try {
+            Map response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class).getBody();
+            System.out.println("🌐 Requesting Foursquare: " + url);
+            System.out.println("📦 Raw Foursquare response: " + response);
+            List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
 
-        List<POI> pois = new ArrayList<>();
+            List<POISnippets> pois = new ArrayList<>();
+            if (results != null) {
+                for (Map<String, Object> result : results) {
+                    String id = (String) result.get("fsq_id");
+                    String name = (String) result.get("name");
 
-        if (results != null) {
-            for (Map<String, Object> result : results) {
-                String id = (String) result.get("fsq_id");
-                String name = (String) result.get("name");
+                    Map<String, Object> geocodes = (Map<String, Object>) result.get("geocodes");
+                    Map<String, Object> main = (Map<String, Object>) geocodes.get("main");
+                    double latitude = (double) main.get("latitude");
+                    double longitude = (double) main.get("longitude");
 
-                Map<String, Object> geocodes = (Map<String, Object>) result.get("geocodes");
-                Map<String, Object> main = (Map<String, Object>) geocodes.get("main");
-                double latitude = (double) main.get("latitude");
-                double longitude = (double) main.get("longitude");
+                    Map<String, Object> location = (Map<String, Object>) result.get("location");
+                    String formattedAddress = (String) location.getOrDefault("formatted_address", "");
+                    String localityName = (String) location.getOrDefault("locality", "");
+                    String region = (String) location.getOrDefault("region", "");
+                    String country = (String) location.getOrDefault("country", "");
+                    String crossStreet = (String) location.getOrDefault("cross_street", "");
+                    String postcode = (String) location.getOrDefault("postcode", "");
 
-                double distance = result.get("distance") instanceof Number ?
-                        ((Number) result.get("distance")).doubleValue() : 0.0;
+                    int distance = (int) result.getOrDefault("distance", 0);
+                    String timezone = (String) result.getOrDefault("timezone", "");
+                    String status = (String) result.getOrDefault("closed_bucket", "open");
 
-                pois.add(new POI(id, name, latitude, longitude, distance));
+                    List<Map<String, Object>> categories = (List<Map<String, Object>>) result.get("categories");
+                    String primaryCategory = categories.isEmpty() ? "Place" : (String) categories.get(0).get("name");
+
+                    String categoryIcon = "";
+                    if (!categories.isEmpty()) {
+                        Map<String, Object> icon = (Map<String, Object>) categories.get(0).get("icon");
+                        categoryIcon = icon.get("prefix") + "64" + icon.get("suffix");
+                    }
+
+                    List<Map<String, Object>> chains = (List<Map<String, Object>>) result.getOrDefault("chains", new ArrayList<>());
+                    String chainName = chains.isEmpty() ? null : (String) chains.get(0).get("name");
+
+                    pois.add(new POISnippets(id, name, latitude, longitude, distance, formattedAddress, localityName,
+                            region, country, crossStreet, postcode, timezone, primaryCategory,
+                            categoryIcon, chainName, status));
+                }
             }
-        }
 
-        return pois;
+            return pois;
+        } catch (Exception e) {
+            System.err.println("⚠️ Failed to fetch POIs from Foursquare: " + e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
+    // Embedded legacy POI DTO for marker logic
     public static class POI {
         private final String id;
         private final String name;
         private final double latitude;
         private final double longitude;
-        private final double distance;
 
-        public POI(String id, String name, double latitude, double longitude, double distance) {
+        public POI(String id, String name, double latitude, double longitude) {
             this.id = id;
             this.name = name;
             this.latitude = latitude;
             this.longitude = longitude;
-            this.distance = distance;
         }
 
         public String getId() { return id; }
         public String getName() { return name; }
         public double getLatitude() { return latitude; }
         public double getLongitude() { return longitude; }
-        public double getDistance() { return distance; }
     }
 }
+
+
+
+

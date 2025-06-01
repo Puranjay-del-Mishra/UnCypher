@@ -50,7 +50,7 @@ class NavigationTool:
             try:
                 # Step 1: Resolve destination
                 poi_response = requests.post(
-                    "http://localhost:8080/api/poi/resolve-destination",
+                    "http://localhost:8080/api/destination/resolve",
                     json={
                         "userId": "ai-agent",
                         "locality": locality,
@@ -108,11 +108,18 @@ class NavigationTool:
             "instruction_count": len(map_commands)
         }
 
-    def handle_poi(self, category: str, locality: str) -> dict:
-        """Handles passive POI markers (used on dashboards, not routing)."""
+    def handle_poi(self, category: str, locality: str, mode: str = "markers") -> dict:
+        """Handles POI queries. Mode can be 'markers' (default) or 'snippets'."""
+        print(f"[NavigationTool] 📍 Requesting POIs for category '{category}' in locality '{locality}', mode: {mode}")
         try:
+            endpoint = (
+                "http://localhost:8080/api/poi/resolve-category"
+                if mode == "markers" else
+                "http://localhost:8080/api/poi/resolve-snippets"
+            )
+
             res = requests.post(
-                "http://localhost:8080/api/poi/resolve-destination",
+                endpoint,
                 json={
                     "userId": "ai-agent",
                     "locality": locality,
@@ -122,16 +129,28 @@ class NavigationTool:
             )
             res.raise_for_status()
             data = res.json()
-            return {
-                "map_commands": data.get("commands", []),
-                "mode": "poi",
-                "category": category,
-                "locality": locality
-            }
+
+            if mode == "markers":
+                return {
+                    "map_commands": data.get("commands", []),
+                    "mode": "poi",
+                    "category": category,
+                    "locality": locality
+                }
+            else:
+                return {
+                    "snippets": data.get("snippets", []),
+                    "mode": "poi-snippets",
+                    "category": category,
+                    "locality": locality
+                }
+
         except Exception as e:
+            print(f"[NavigationTool] ❌ Error fetching POIs: {e}")
             return {
                 "error": f"Failed to fetch POIs: {str(e)}",
-                "map_commands": []
+                "map_commands": [] if mode == "markers" else [],
+                "snippets": [] if mode == "snippets" else []
             }
 
     def handle_route(self, destination: str, locality: str) -> dict:

@@ -7,6 +7,7 @@ import requests
 from utils.token_manager import token_manager
 import os
 import datetime
+from utils.poi_feeder import POIFeeder
 
 class InsightService:
     def __init__(self):
@@ -17,9 +18,22 @@ class InsightService:
         start = time.time()
 
         location = request.location
-        trivia_output = self.guide_tool.run(location, mode="dashboard")
+        lat, lng = location.split(",")
 
-        # Validate and wrap guide_output as a list
+        # POI Feeder knows how to use NavigationTool internally
+        poi_feeder = POIFeeder()
+        fake_user_state = type("UserState", (), {"location": (lat, lng)})  # temp stand-in
+
+        poi_snippets = poi_feeder.get_nearby_poi_snippets(
+            user_state=fake_user_state
+        )
+
+        poi_context = "\n".join(f"- {p}" for p in poi_snippets if p.strip())
+        print('POI context for passive insights: ', poi_context)
+        full_prompt = f"User is near ({lat}, {lng}). Here are some POIs nearby:\n{poi_context}\n\nGenerate engaging trivia for a dashboard display."
+
+        trivia_output = self.guide_tool.run(full_prompt, mode="dashboard")
+
         insights_raw = trivia_output.get("guide_output", [])
         if isinstance(insights_raw, str):
             insights = [insights_raw]
@@ -29,16 +43,17 @@ class InsightService:
             insights = ["[Invalid guide_tool output]"]
 
         duration = round((time.time() - start) * 1000)
-        print(f"📊 Passive insight (guide_tool) completed in {duration} ms")
+        print(f"📊 Passive insight (POI + guide_tool) completed in {duration} ms")
 
         return PassiveInsightResponse(
             insights=insights,
-            toolUsed="guide_tool",
+            toolUsed="guide_tool+poi_feeder",
             meta={
                 "location": location,
                 "deviceType": request.deviceType or "unknown",
                 "source": "dashboard-passive",
-                "duration_ms": duration
+                "duration_ms": duration,
+                "poi_count": len(poi_snippets)
             }
         )
 

@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Collections;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/poi")
@@ -17,40 +17,35 @@ public class POIController {
 
     private final POIService poiService;
 
-//    @PostMapping("/info")
-//    public POIInfoResponse getPOIInfo(@RequestBody POIInfoRequest request) {
-//
-//        // Generate map markers for requested category + locality
-//        List<MapCommand> mapCommands = poiService.generatePOIMarkers(
-//                request.getUserId(),
-//                request.getCategory(),
-//                request.getLocality()
-//        );
-//
-//        // Prepare response
-//        POIInfoResponse response = new POIInfoResponse();
-//        response.setCommands(mapCommands);
-//
-//        return response;
-//    }
+    @PostMapping("/resolve-category")
+    public POIInfoResponse resolveCategoryPOIs(@RequestBody POIInfoRequest request) {
+        List<MapCommand> mapCommands;
 
-    @PostMapping("/resolve-destination")
-    public POIInfoResponse resolveDestinationMarker(@RequestBody POIInfoRequest request){
-        MapCommand bestMatch = poiService.getDestinationMarker(
-                request.getUserId(),
-                request.getCategory(),
-                request.getLocality()
-        );
-
-        POIInfoResponse response = new POIInfoResponse();
-        if (bestMatch != null) {
-            response.setCommands(List.of(bestMatch));
+        if (request.getCategory() == null || request.getCategory().isBlank()) {
+            mapCommands = poiService.generateDefaultCategoryPOIs(
+                    request.getUserId(),
+                    request.getLocality()
+            );
         } else {
-            response.setCommands(Collections.emptyList());
+            mapCommands = poiService.generateNearbyPOIMarkers(
+                    request.getUserId(),
+                    request.getCategory(),
+                    request.getLocality()
+            );
         }
 
+        POIInfoResponse response = new POIInfoResponse();
+        response.setCommands(mapCommands);
         return response;
     }
 
+    @PostMapping("/resolve-snippets")
+    public Map<String, Object> resolveCategorySnippets(@RequestBody POIInfoRequest request) {
+        String category = request.getCategory() != null ? request.getCategory() : "interesting places";
+        List<String> snippets = poiService.generatePOISnippets(request.getLocality(), category);
+        return Map.of("snippets", snippets);
+    }
 }
+
+
 

@@ -1,6 +1,7 @@
 com/UnCypher/security/JwtAuthEntryPoint.class
 com/UnCypher/models/dto/POIInfoRequest.class
 com/UnCypher/services/POIService$POI.class
+com/UnCypher/services/GeocodingService$POI.class
 com/UnCypher/models/dto/RefreshRequest.class
 com/UnCypher/security/JwtAccessDeniedHandler.class
 com/UnCypher/models/dto/InsightResponse.class
@@ -38,6 +39,7 @@ com/UnCypher/security/CsrfLoggingFilter.class
 com/UnCypher/controllers/POIController.class
 com/UnCypher/services/UserStateService.class
 com/UnCypher/mappers/InsightSocketPayloadMapper.class
+com/UnCypher/services/GeocodingService.class
 com/UnCypher/controllers/NavigationController.class
 com/UnCypher/BackendApplication.class
 com/UnCypher/config/SecurityConfig$1.class
@@ -50,6 +52,7 @@ com/UnCypher/security/CustomUserDetailsService.class
 com/UnCypher/services/RoutingService.class
 com/UnCypher/models/dto/UserStateRequest.class
 com/UnCypher/services/InsightResponseProcessor.class
+com/UnCypher/controllers/DestinationController.class
 com/UnCypher/llm/MockLLMClient.class
 com/UnCypher/models/AuthCred.class
 com/UnCypher/services/AuthService.class
@@ -62,4 +65,5 @@ com/UnCypher/models/dto/MapCommand.class
 com/UnCypher/utils/UserStateSchemaProvider.class
 com/UnCypher/config/SecurityConfig.class
 com/UnCypher/models/dto/ChatMessage.class
+com/UnCypher/models/dto/POISnippets.class
 com/UnCypher/services/JwtService.class

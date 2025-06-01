@@ -11,14 +11,12 @@ class ToolRegistry:
 
     def __init__(self):
         self.tools = {
-            GuideTool.name: GuideTool(),
             ConvoTool.name: ConvoTool(),
             NavigationTool.name: NavigationTool(),
             PoiRefinerTool.name: PoiRefinerTool()
         }
 
         self.tool_classes = {
-            GuideTool.name: GuideTool,
             ConvoTool.name: ConvoTool,
             NavigationTool.name: NavigationTool,
             PoiRefinerTool.name: PoiRefinerTool

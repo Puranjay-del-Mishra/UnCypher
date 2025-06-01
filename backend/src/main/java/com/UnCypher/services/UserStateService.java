@@ -67,8 +67,8 @@ public class UserStateService {
         String localityCacheKey = "user:locality:" + userId;
         String cachedLocalityId = redisService.getString(localityCacheKey).orElse(null);
 
-        boolean localityChanged = StateComparator.hasStateChanged(currentState, previousState, schema);
-
+//        boolean localityChanged = StateComparator.hasStateChanged(currentState, previousState, schema);
+        boolean localityChanged = true;
         log.debug("📍 [{}] Previous locality: {}, New: {}, Changed? {}, ClientHasInsight: {}",
                 userId, cachedLocalityId, newLocalityId, localityChanged, clientHasInsight);
 

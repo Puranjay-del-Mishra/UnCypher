@@ -20,6 +20,8 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.UUID;
+
 
 @RestController
 @RequestMapping("/api/insights")
@@ -91,6 +93,9 @@ public class InsightsController {
 
     @PostMapping("/chat/save")
     public ResponseEntity<Void> saveChat(@RequestBody ChatMessage chatMessage) {
+        if (chatMessage.getMessageId() == null || chatMessage.getMessageId().isEmpty()) {
+            chatMessage.setMessageId(UUID.randomUUID().toString());
+        }
         redisService.saveChatMessage(chatMessage.getUserId(), chatMessage);
         return ResponseEntity.ok().build();
     }

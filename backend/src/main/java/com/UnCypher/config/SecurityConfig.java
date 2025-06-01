@@ -74,7 +74,9 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/auth/refresh").permitAll()
-                        .requestMatchers("/api/poi/resolve-destination").permitAll()
+                        .requestMatchers("/api/destination/resolve").permitAll()
+                        .requestMatchers("/api/poi/resolve-category").permitAll()
+                        .requestMatchers("/api/poi/resolve-snippets").permitAll()
                         .requestMatchers("/api/navigation/route").permitAll()
                         .requestMatchers("/api/insights/mapcommand").permitAll()
                         .requestMatchers(HttpMethod.GET, "/admin/generate-agent-token").permitAll()

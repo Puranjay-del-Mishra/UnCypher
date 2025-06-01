@@ -5,10 +5,11 @@ import requests
 from typing import Dict, Any, List, AsyncGenerator
 
 from memory_manager import Memory
-from .llm_planner import Planner, HFLlama3Planner
+from .llm_planner import Planner, OpenRouterLlama3Planner
 
 from toolset import ToolRegistry
 from orchestrator.plan_step import PlanStep
+from utils.strip_geojson import strip_geojson_geometry
 
 
 class Orchestrator:
@@ -23,7 +24,7 @@ class Orchestrator:
         self.user_id = user_id
         self.memory = Memory(user_id, table_name)
         self.tool_registry = ToolRegistry()
-        self.planner = Planner(strategy=HFLlama3Planner())
+        self.planner = Planner(strategy=OpenRouterLlama3Planner())
         self.loop_trace = []
 
     def run(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -49,7 +50,7 @@ class Orchestrator:
         # 🔧 Build planner prompt and run planner
         plan_prompt = self._build_prompt(payload, context, tool_descriptions)
         planner_start = time.time()
-        planner_output = self.planner.generate(plan_prompt)
+        planner_output = self.planner.get_next_action(plan_prompt)
         print("🧠 Planner output:", planner_output)
         print(f"🧠 Planner LLM call took {round((time.time() - planner_start) * 1000)} ms")
 
@@ -101,7 +102,9 @@ class Orchestrator:
             result_map[result_key] = tool_result
 
             # 💾 Save memory + trace
-            self.memory.log_message(step.tool_name, str(tool_result))
+            safe_tool_result = strip_geojson_geometry(tool_result)
+
+            self.memory.log_message(step.tool_name, str(safe_tool_result))
             self.loop_trace.append({
                 "tool": step.tool_name,
                 "input": input_data,
@@ -176,8 +179,8 @@ class Orchestrator:
         print('Dynamic context is: ', dynamic_context)
         print('Tool Descriptions: ', tool_descriptions)
         return (
-            "You are an AI orchestrator that generates a minimal pipeline of tool selection which is used to solve user's needs.\n"
-            "Your job is to chose the set of tools from the tool registry in the correct order and chain their outputs to solve the user's request.\n\n"
+            "You are an AI orchestrator that generates a minimal pipeline of tool selection which is used to solve user's needs across the conversation and then generates a conversational response.\n"
+            "Your job is to chose the set of tools from the tool registry in the correct order and chain their outputs to solve the user's request(the request might refer to inputs/results from the chat logs, make sure such cases are handled correctly).\n\n"
             "🔧 Available tools:\n"
             f"{tool_descriptions}\n\n"
             "🔁 Respond in JSON array format only, avoid assuming tools that are not defined in the tool registry, described above. Each object must have:\n"
@@ -187,18 +190,21 @@ class Orchestrator:
             "DO NOT write explanations. DO NOT return anything outside the JSON. Avoid triggering the same tool in a row, compress them into one single tool call.\n"
             "Only use tools from the provided list.\n"
             "Always finish with ##DONE## after the array.\n\n"
+            "#Always use the convo tool to generate a simple response after carrying out user's query, to make the UX seamless!#"
+            "#Provide the convo tool with outputs of the intermittent tools if needed, to generate better conversational responses#"
             "##Use the below examples and ##Strictly## structure your output like below and understand how you should approach a query. Keep the plan minimilastic##\n"
             "🧪 Example 1 (chained inputs):\n"
             "[\n"
             "  {\"TOOL_NAME\": \"guide_tool\", \"INPUT_ID\": \"inp_1\", \"REASON\": \"Get trivia near user.\"},\n"
             "  {\"TOOL_NAME\": \"aesthetic_tool\", \"INPUT_ID\": \"inp_1\", \"REASON\": \"Score streets visually.\"},\n"
             "  {\"TOOL_NAME\": \"navigation_tool\", \"INPUT_ID\": \"out_1+out_2\", \"REASON\": \"Blend both for scenic route.\"}\n"
+            "  {\"TOOL_NAME\": \"convo_tool\", \"INPUT_ID\": \"out_3\", \"REASON\": \"Generate a response for the user based on the generated route and user's request\"}\n"
             "]\n\n"
             "🧪 Example 2 (recursive refinement):\n"
             "[\n"
-            "  {\"TOOL_NAME\": \"poi_refiner_tool\", \"INPUT_ID\": \"inp_1\", \"REASON\": \"Refine user query for setting routes and markers.\"},\n"
+            "  {\"TOOL_NAME\": \"poi_refiner_tool\", \"INPUT_ID\": \"inp_1\", \"REASON\": \"Refine user query for setting the marker.\"},\n"
             "  {\"TOOL_NAME\": \"navigation_tool\", \"INPUT_ID\": \"out_1\", \"REASON\": \"Process the POI instructions\"}\n"
-            "  {\"TOOL_NAME\": \"guide_tool\", \"INPUT_ID\": \"inp_1\", \"REASON\": \"Generate conversational response for the user destination, route and current location\"}\n"
+            "  {\"TOOL_NAME\": \"convo_tool\", \"INPUT_ID\": \"out_2\", \"REASON\": \"Generate conversational response for the user query, using info from the marker and current location\"}\n"
             "]\n\n"
             f"User Query: \"{query}\"\n"
             f"Context: {context} {dynamic_context}\n\n"
